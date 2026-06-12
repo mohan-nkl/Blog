@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Blog — Home')}"></head>
+<body>
+<header th:replace="~{layout :: header}"></header>
+
+<style>
+  .filters { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 1.5rem; }
+  .filters input[type=text], .filters select { width: auto; margin-top: 0; padding: 0.35rem; }
+  .filters button { margin-top: 0; }
+</style>
+
+<div th:if="${message}" class="flash" th:text="${message}"></div>
+
+<h1>Latest Posts</h1>
+
+<form th:action="@{/}" method="get" class="filters">
+  <input type="text" name="q" th:value="${q}" placeholder="Search…">
+
+  <select name="authorId">
+    <option value="">All authors</option>
+    <option th:each="a : ${authors}" th:value="${a.id}" th:text="${a.name}"
+            th:selected="${authorId != null and authorId == a.id}">Author</option>
+  </select>
+
+  <select name="tagId">
+    <option value="">All tags</option>
+    <option th:each="t : ${tags}" th:value="${t.id}" th:text="${t.name}"
+            th:selected="${tagId != null and tagId == t.id}">Tag</option>
+  </select>
+
+  <select name="sortField">
+    <option value="publishedAt" th:selected="${sortField == 'publishedAt'}">Date published</option>
+    <option value="createdAt"   th:selected="${sortField == 'createdAt'}">Date created</option>
+    <option value="title"       th:selected="${sortField == 'title'}">Title</option>
+  </select>
+
+  <select name="order">
+    <option value="desc" th:selected="${order == 'desc'}">Newest / Z–A</option>
+    <option value="asc"  th:selected="${order == 'asc'}">Oldest / A–Z</option>
+  </select>
+
+  <button type="submit">Apply</button>
+  <a th:href="@{/}">Clear</a>
+</form>
+
+<p th:if="${posts.isEmpty()}">
+  No posts match. <a th:href="@{/}">Clear filters</a> or <a th:href="@{/posts/new}">write one</a>.
+</p>
+
+<article th:each="post : ${posts.content}" style="margin-bottom: 1.5rem;">
+  <h2 style="margin-bottom: 0.25rem;">
+    <a th:href="@{/posts/{id}(id=${post.id})}" th:text="${post.title}">Post title</a>
+  </h2>
+  <p class="meta">
+    by <span th:text="${post.author != null ? post.author.name : 'Unknown'}">Author</span>
+    <span th:if="${post.publishedAt != null}"
+          th:text="'· ' + ${#temporals.format(post.publishedAt, 'dd MMM yyyy')}">· date</span>
+  </p>
+  <p th:text="${post.excerpt}">Excerpt…</p>
+  <div>
+    <span class="tag" th:each="tag : ${post.tags}" th:text="${tag.name}">tag</span>
+  </div>
+</article>
+
+<div class="pagination" th:if="${posts.totalPages > 1}">
+  <a th:if="${!posts.first}"
+     th:href="@{/(page=${posts.number - 1}, size=${posts.size}, authorId=${authorId}, tagId=${tagId}, q=${q}, sortField=${sortField}, order=${order})}">&larr; Previous</a>
+  <span>Page <span th:text="${posts.number + 1}">1</span>
+          of <span th:text="${posts.totalPages}">1</span></span>
+  <a th:if="${!posts.last}"
+     th:href="@{/(page=${posts.number + 1}, size=${posts.size}, authorId=${authorId}, tagId=${tagId}, q=${q}, sortField=${sortField}, order=${order})}">Next &rarr;</a>
+</div>
+
+<footer th:replace="~{layout :: footer}"></footer>
+</body>
+</html>

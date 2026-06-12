@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:with="pageTitle=${postId != null ? 'Edit Post' : 'New Post'},
+               submitLabel=${postId != null ? 'Update' : 'Create'}">
+<head th:replace="~{layout :: head(${pageTitle})}"></head>
+<body>
+<header th:replace="~{layout :: header}"></header>
+
+<h1 th:text="${pageTitle}">New Post</h1>
+
+<form th:object="${postForm}" method="post"
+      th:action="@{|/posts${postId != null ? '/' + postId : ''}|}">
+
+  <label>Title
+    <input type="text" th:field="*{title}">
+  </label>
+  <span class="error" th:if="${#fields.hasErrors('title')}" th:errors="*{title}">title error</span>
+
+  <label>Excerpt
+    <input type="text" th:field="*{excerpt}">
+  </label>
+  <span class="error" th:if="${#fields.hasErrors('excerpt')}" th:errors="*{excerpt}">excerpt error</span>
+
+  <label>Content
+    <textarea th:field="*{content}" rows="8"></textarea>
+  </label>
+  <span class="error" th:if="${#fields.hasErrors('content')}" th:errors="*{content}">content error</span>
+
+  <label>Author
+    <select th:field="*{authorId}">
+      <option value="">— choose an author —</option>
+      <option th:each="author : ${authors}"
+              th:value="${author.id}" th:text="${author.name}">Author</option>
+    </select>
+  </label>
+  <span class="error" th:if="${#fields.hasErrors('authorId')}" th:errors="*{authorId}">author error</span>
+
+  <label>Tags (comma-separated)
+    <input type="text" th:field="*{tags}" placeholder="java, spring, jpa">
+  </label>
+
+  <label style="font-weight: normal;">
+    <input type="checkbox" th:field="*{published}"> Publish now
+  </label>
+
+  <button type="submit" th:text="${submitLabel}">Save</button>
+</form>
+
+<footer th:replace="~{layout :: footer}"></footer>
+</body>
+</html>
