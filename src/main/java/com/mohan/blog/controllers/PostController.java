@@ -79,14 +79,22 @@ public class PostController {
 
         Post post = postService.getPost(id);
 
-        String tagCsv = post.getTags()
-                        .stream()
-                        .map(Tag::getName)
-                        .collect(Collectors.joining(", "));
+        StringBuilder tagCsvBuilder = new StringBuilder();
+        for (Tag tag : post.getTags()) {
+            if (!tagCsvBuilder.isEmpty()) {
+                tagCsvBuilder.append(", ");
+            }
+            tagCsvBuilder.append(tag.getName());
+        }
+        String tagCsv = tagCsvBuilder.toString();
 
-        PostForm postForm = new PostForm(post.getTitle(), post.getExcerpt(), post.getContent(),
-                        post.getAuthor() != null ? post.getAuthor().getId() : null,
-                        tagCsv, post.isPublished());
+        Long authorId = null;
+        if (post.getAuthor() != null) {
+            authorId = post.getAuthor().getId();
+        }
+
+        PostForm postForm = new PostForm(post.getTitle(), post.getExcerpt(), post.getContent(), authorId, tagCsv,
+                                        post.isPublished());
 
         model.addAttribute("postForm", postForm);
         model.addAttribute("postId", id);
