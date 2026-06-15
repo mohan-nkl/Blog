@@ -26,13 +26,23 @@
   </label>
   <span class="error" th:if="${#fields.hasErrors('content')}" th:errors="*{content}">content error</span>
 
-  <label>Author
+  <label>Author</label>
+
+  <!-- Admin: pick any author -->
+  <div th:if="${isAdmin}">
     <select th:field="*{authorId}">
       <option value="">— choose an author —</option>
       <option th:each="author : ${authors}"
               th:value="${author.id}" th:text="${author.name}">Author</option>
     </select>
-  </label>
+  </div>
+
+  <!-- Author: fixed to themselves. Disabled box shows the name; hidden field carries the id. -->
+  <div th:unless="${isAdmin}">
+    <input type="text" th:value="${currentUserName}" disabled>
+    <input type="hidden" th:field="*{authorId}">
+  </div>
+
   <span class="error" th:if="${#fields.hasErrors('authorId')}" th:errors="*{authorId}">author error</span>
 
   <label>Tags (comma-separated)

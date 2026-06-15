@@ -8,11 +8,17 @@
   .filters { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 1.5rem; }
   .filters input[type=text], .filters select { width: auto; margin-top: 0; padding: 0.35rem; }
   .filters button { margin-top: 0; }
+
+  .post-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 600px) { .post-grid { grid-template-columns: 1fr; } }
+  .post-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; }
+  .post-card h2 { margin: 0 0 0.25rem; font-size: 1.2rem; }
+  .post-card .excerpt { margin: 0.5rem 0; }
 </style>
 
 <div th:if="${message}" class="flash" th:text="${message}"></div>
 
-<h1>Latest Posts</h1>
+<h1>My Blog Application</h1>
 
 <form th:action="@{/}" method="get" class="filters">
   <input type="text" name="q" th:value="${q}" placeholder="Search…">
@@ -48,20 +54,31 @@
   No posts match. <a th:href="@{/}">Clear filters</a> or <a th:href="@{/posts/new}">write one</a>.
 </p>
 
-<article th:each="post : ${posts.content}" style="margin-bottom: 1.5rem;">
-  <h2 style="margin-bottom: 0.25rem;">
-    <a th:href="@{/posts/{id}(id=${post.id})}" th:text="${post.title}">Post title</a>
-  </h2>
-  <p class="meta">
-    by <span th:text="${post.author != null ? post.author.name : 'Unknown'}">Author</span>
-    <span th:if="${post.publishedAt != null}"
-          th:text="'· ' + ${#temporals.format(post.publishedAt, 'dd MMM yyyy')}">· date</span>
-  </p>
-  <p th:text="${post.excerpt}">Excerpt…</p>
-  <div>
-    <span class="tag" th:each="tag : ${post.tags}" th:text="${tag.name}">tag</span>
-  </div>
-</article>
+<div class="post-grid">
+  <article class="post-card" th:each="post : ${posts.content}"
+           th:with="canManage=${currentUser != null and (currentUser.role.name() == 'ADMIN' or (post.author != null and post.author.id == currentUser.id))}">
+    <h2>
+      <a th:href="@{/posts/{id}(id=${post.id})}" th:text="${post.title}">Post title</a>
+    </h2>
+    <p class="meta">
+      <span th:text="${post.author != null ? post.author.name : 'Unknown'}">Author</span>
+      <span th:if="${post.publishedAt != null}"
+            th:text="', ' + ${#temporals.format(post.publishedAt, 'dd/MM/yyyy')}">, date</span>
+    </p>
+    <p class="excerpt" th:text="${post.excerpt}">Excerpt…</p>
+    <div>
+      <span class="tag" th:each="tag : ${post.tags}" th:text="${tag.name}">tag</span>
+    </div>
+    <p style="margin-top: 0.5rem;" th:if="${canManage}">
+      <a th:href="@{/posts/{id}/edit(id=${post.id})}">Edit</a>
+      &nbsp;|&nbsp;
+    <form th:action="@{/posts/{id}/delete(id=${post.id})}" method="post"
+          style="display:inline;" onsubmit="return confirm('Delete this post?');">
+      <button type="submit" style="margin:0; padding:0.15rem 0.5rem; font-size:0.8rem;">Delete</button>
+    </form>
+    </p>
+  </article>
+</div>
 
 <div class="pagination" th:if="${posts.totalPages > 1}">
   <a th:if="${!posts.first}"

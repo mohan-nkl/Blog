@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{layout :: head(${post.title})}"></head>
-<body>
+<body th:with="canManage=${currentUser != null and (currentUser.role.name() == 'ADMIN' or (post.author != null and post.author.id == currentUser.id))}">
 <header th:replace="~{layout :: header}"></header>
 
 <div th:if="${message}" class="flash" th:text="${message}"></div>
@@ -18,7 +18,8 @@
   </div>
   <div th:text="${post.content}" style="margin-top: 1rem;">Content…</div>
 
-  <p style="margin-top: 1rem;">
+  <!-- Edit / Delete: only the post's author or an admin -->
+  <p style="margin-top: 1rem;" th:if="${canManage}">
     <a th:href="@{/posts/{id}/edit(id=${post.id})}">Edit</a>
     &nbsp;|&nbsp;
   <form th:action="@{/posts/{id}/delete(id=${post.id})}" method="post"
@@ -41,6 +42,16 @@
             th:text="'· ' + ${#temporals.format(comment.createdAt, 'dd MMM yyyy, HH:mm')}">date</span>
     </p>
     <p th:text="${comment.comment}" style="margin-top: 0;">Comment body…</p>
+
+    <!-- Moderation: only the post's author or an admin -->
+    <p style="margin-top: 0;" th:if="${canManage}">
+      <a th:href="@{/comments/{id}/edit(id=${comment.id})}">Edit</a>
+      &nbsp;|&nbsp;
+    <form th:action="@{/comments/{id}/delete(id=${comment.id})}" method="post"
+          style="display:inline;" onsubmit="return confirm('Delete this comment?');">
+      <button type="submit">Delete</button>
+    </form>
+    </p>
   </div>
 
   <h3>Add a comment</h3>
