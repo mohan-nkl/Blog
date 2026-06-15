@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Blog — Login')}"></head>
+<body>
+<header th:replace="~{layout :: header}"></header>
+
+<h1 style="text-align:center;">Login</h1>
+
+<div th:if="${param.error}" class="error" style="text-align:center;">
+    Invalid email or password.
+</div>
+<div th:if="${param.logout}" class="flash" style="text-align:center;">
+    You have been logged out.
+</div>
+<div th:if="${message}" class="flash" style="text-align:center;" th:text="${message}"></div>
+
+<form th:action="@{/login}" method="post" style="max-width: 360px; margin: 0 auto;">
+    <label>Email
+        <input type="text" name="username" autofocus>
+    </label>
+
+    <label>Password
+        <input type="password" name="password">
+    </label>
+
+    <button type="submit">Log in</button>
+</form>
+
+<p style="text-align:center; margin-top:1rem;">
+    Doesn't have account? <a th:href="@{/register}">Create one</a>
+</p>
+
+<footer th:replace="~{layout :: footer}"></footer>
+</body>
+</html>
