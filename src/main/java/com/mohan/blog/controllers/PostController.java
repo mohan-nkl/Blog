@@ -3,18 +3,20 @@ package com.mohan.blog.controllers;
 import com.mohan.blog.dtos.CommentForm;
 import com.mohan.blog.dtos.PostForm;
 import com.mohan.blog.models.Post;
+import com.mohan.blog.models.Role;
 import com.mohan.blog.models.Tag;
+import com.mohan.blog.models.User;
+import com.mohan.blog.security.CustomUserDetails;
 import com.mohan.blog.services.CommentService;
 import com.mohan.blog.services.PostService;
 import com.mohan.blog.services.UserService;
 import jakarta.validation.Valid;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-
-import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/posts")
@@ -30,116 +32,110 @@ public class PostController {
         this.commentService = commentService;
     }
 
-    // To view a post
+    // View a post — public.
     @GetMapping("/{id}")
     public String viewPost(@PathVariable Long id, Model model) {
 
         Post post = postService.getPost(id);
 
-        CommentForm commentForm = new CommentForm(null, null, null);
-
         model.addAttribute("post", post);
-        model.addAttribute("commentForm", commentForm);
+        model.addAttribute("commentForm", new CommentForm(null, null, null));
 
         return "post-detail";
     }
 
-    // To show create form
+    // Show the create form.
     @GetMapping("/new")
-    public String showCreateForm(Model model) {
+    public String showCreateForm(@AuthenticationPrincipal CustomUserDetails principal, Model model) {
 
-        PostForm postForm = new PostForm(null, null, null, null, null, false);
+        User currentUser = principal.getUser();
+
+        PostForm postForm = new PostForm(null, null, null, defaultAuthorId(currentUser), null, false);
 
         model.addAttribute("postForm", postForm);
-        model.addAttribute("authors", userService.findAll());
+        addAuthorChoices(model, currentUser);
 
         return "post-form";
     }
 
-    // To create post
+    // Create a post.
     @PostMapping
-    public String createPost(@Valid @ModelAttribute("postForm") PostForm postForm, BindingResult result, Model model,
+    public String createPost(@Valid @ModelAttribute("postForm") PostForm postForm, BindingResult result,
+                             @AuthenticationPrincipal CustomUserDetails principal, Model model,
                              RedirectAttributes redirectAttributes) {
 
+        User currentUser = principal.getUser();
+
         if (result.hasErrors()) {
-            model.addAttribute("authors", userService.findAll());
+            addAuthorChoices(model, currentUser);
             return "post-form";
         }
 
-        Post savedPost = postService.create(postForm);
+        Post savedPost = postService.create(postForm, currentUser);
 
         redirectAttributes.addFlashAttribute("message", "Post created.");
 
         return "redirect:/posts/" + savedPost.getId();
     }
 
-    // To show edit form
+    // Show the edit form.
     @GetMapping("/{id}/edit")
-    public String showEditForm(@PathVariable Long id, Model model) {
+    public String showEditForm(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails principal,
+                               Model model) {
 
+        User currentUser = principal.getUser();
         Post post = postService.getPost(id);
 
-        StringBuilder tagCsvBuilder = new StringBuilder();
-        for (Tag tag : post.getTags()) {
-            if (!tagCsvBuilder.isEmpty()) {
-                tagCsvBuilder.append(", ");
-            }
-            tagCsvBuilder.append(tag.getName());
-        }
-        String tagCsv = tagCsvBuilder.toString();
-
-        Long authorId = null;
-        if (post.getAuthor() != null) {
-            authorId = post.getAuthor().getId();
-        }
-
-        PostForm postForm = new PostForm(post.getTitle(), post.getExcerpt(), post.getContent(), authorId, tagCsv,
-                                        post.isPublished());
+        PostForm postForm = new PostForm(post.getTitle(), post.getExcerpt(), post.getContent(),
+                authorIdOf(post), tagCsvOf(post), post.isPublished());
 
         model.addAttribute("postForm", postForm);
         model.addAttribute("postId", id);
-        model.addAttribute("authors", userService.findAll());
+        addAuthorChoices(model, currentUser);
 
         return "post-form";
     }
 
-    // To update post
+    // Update a post.
     @PostMapping("/{id}")
     public String updatePost(@PathVariable Long id, @Valid @ModelAttribute("postForm") PostForm postForm,
-                             BindingResult result, Model model, RedirectAttributes redirectAttributes) {
+                             BindingResult result, @AuthenticationPrincipal CustomUserDetails principal,
+                             Model model, RedirectAttributes redirectAttributes) {
+
+        User currentUser = principal.getUser();
 
         if (result.hasErrors()) {
-            model.addAttribute("authors", userService.findAll());
             model.addAttribute("postId", id);
+            addAuthorChoices(model, currentUser);
             return "post-form";
         }
 
-        postService.update(id, postForm);
+        postService.update(id, postForm, currentUser);
 
         redirectAttributes.addFlashAttribute("message", "Post updated.");
 
         return "redirect:/posts/" + id;
     }
 
-    // To delete a post
+    // Delete a post.
     @PostMapping("/{id}/delete")
-    public String deletePost(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+    public String deletePost(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails principal,
+                             RedirectAttributes redirectAttributes) {
 
-        postService.delete(id);
+        postService.delete(id, principal.getUser());
 
         redirectAttributes.addFlashAttribute("message", "Post deleted.");
 
         return "redirect:/";
     }
 
-    // To add a comment
+    // Add a comment — public.
     @PostMapping("/{id}/comments")
     public String addComment(@PathVariable Long id, @Valid @ModelAttribute("commentForm") CommentForm commentForm,
                              BindingResult result, Model model, RedirectAttributes redirectAttributes) {
 
         if (result.hasErrors()) {
-            Post post = postService.getPost(id);
-            model.addAttribute("post", post);
+            model.addAttribute("post", postService.getPost(id));
             return "post-detail";
         }
 
@@ -148,5 +144,43 @@ public class PostController {
         redirectAttributes.addFlashAttribute("message", "Comment added.");
 
         return "redirect:/posts/" + id;
+    }
+
+    // ----- form helpers -----
+
+    /** Authors are pre-filled as themselves; an admin chooses, so leave it blank. */
+    private Long defaultAuthorId(User currentUser) {
+        if (currentUser.getRole() == Role.ADMIN) {
+            return null;
+        }
+        return currentUser.getId();
+    }
+
+    /** Data the post form needs to render the author field correctly for this user's role. */
+    private void addAuthorChoices(Model model, User currentUser) {
+        boolean admin = currentUser.getRole() == Role.ADMIN;
+        model.addAttribute("isAdmin", admin);
+        model.addAttribute("currentUserName", currentUser.getName());
+        if (admin) {
+            model.addAttribute("authors", userService.findAll());
+        }
+    }
+
+    private Long authorIdOf(Post post) {
+        if (post.getAuthor() == null) {
+            return null;
+        }
+        return post.getAuthor().getId();
+    }
+
+    private String tagCsvOf(Post post) {
+        StringBuilder builder = new StringBuilder();
+        for (Tag tag : post.getTags()) {
+            if (!builder.isEmpty()) {
+                builder.append(", ");
+            }
+            builder.append(tag.getName());
+        }
+        return builder.toString();
     }
 }

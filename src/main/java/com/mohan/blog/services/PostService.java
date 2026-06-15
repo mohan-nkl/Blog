@@ -2,6 +2,7 @@ package com.mohan.blog.services;
 
 import com.mohan.blog.dtos.PostForm;
 import com.mohan.blog.models.Post;
+import com.mohan.blog.models.Role;
 import com.mohan.blog.models.Tag;
 import com.mohan.blog.models.User;
 import com.mohan.blog.repositories.PostRepository;
@@ -10,6 +11,7 @@ import com.mohan.blog.specifications.PostSpecifications;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,7 +36,6 @@ public class PostService {
 
     @Transactional(readOnly = true)
     public Page<Post> listPublished(Pageable pageable) {
-
         return postRepository.findByPublishedTrue(pageable);
     }
 
@@ -61,64 +62,108 @@ public class PostService {
     }
 
     @Transactional
-    public Post create(PostForm form) {
+    public Post create(PostForm form, User currentUser) {
 
-        Optional<User> userOptional = userRepository.findById(form.getAuthorId());
-        if (userOptional.isEmpty()) {
-            throw new IllegalArgumentException("Author not found: " + form.getExcerpt());
-        }
-        User author = userOptional.get();
+        User author = resolveAuthor(form, currentUser);
 
         Post post = new Post(form.getTitle(), form.getExcerpt(), form.getContent(), author);
-        post.setPublished(form.isPublished());
-        if (post.isPublished()) {
-            post.setPublishedAt(LocalDateTime.now());
-        }
-
-        Set<Tag> tags = tagService.resolveTags(form.getTags());
-        for (Tag tag: tags) {
-            post.addTag(tag);
-        }
+        applyPublishState(post, form.isPublished());
+        applyTags(post, form.getTags());
 
         return postRepository.save(post);
     }
 
     @Transactional
-    public Post update(Long id, PostForm form) {
-
-        Optional<User> userOptional = userRepository.findById(form.getAuthorId());
-        if (userOptional.isEmpty()) {
-            throw new IllegalArgumentException("Author not found: " + form.getContent());
-        }
-        User author = userOptional.get();
+    public Post update(Long id, PostForm form, User currentUser) {
 
         Post post = getPost(id);
+        ensureCanModify(post, currentUser);
 
         post.setTitle(form.getTitle());
         post.setExcerpt(form.getExcerpt());
         post.setContent(form.getContent());
-        post.setAuthor(author);
 
-        boolean wasPublished = post.isPublished();
-        post.setPublished(form.isPublished());
-        if (form.isPublished() && !wasPublished) {
-            post.setPublishedAt(LocalDateTime.now());
+        // Only an admin may reassign the author; an author's post stays their own.
+        if (isAdmin(currentUser)) {
+            post.setAuthor(loadAuthor(form.getAuthorId()));
         }
 
-        post.getTags().clear();
-
-        Set<Tag> tags = tagService.resolveTags(form.getTags());
-
-        for (Tag tag: tags) {
-            post.addTag(tag);
-        }
+        applyPublishState(post, form.isPublished());
+        applyTags(post, form.getTags());
 
         return post;
     }
 
     @Transactional
-    public void delete(Long id) {
+    public void delete(Long id, User currentUser) {
+
+        Post post = getPost(id);
+        ensureCanModify(post, currentUser);
 
         postRepository.deleteById(id);
+    }
+
+    // ----- Author resolution -----
+
+    /** Authors always write as themselves; only an admin may choose the author. */
+    private User resolveAuthor(PostForm form, User currentUser) {
+
+        if (isAdmin(currentUser)) {
+            return loadAuthor(form.getAuthorId());
+        }
+        return loadAuthor(currentUser.getId());
+    }
+
+    private User loadAuthor(Long authorId) {
+
+        Optional<User> userOptional = userRepository.findById(authorId);
+        if (userOptional.isEmpty()) {
+            throw new IllegalArgumentException("Author not found: " + authorId);
+        }
+        return userOptional.get();
+    }
+
+    // ----- Permission checks -----
+
+    private void ensureCanModify(Post post, User currentUser) {
+
+        if (isAdmin(currentUser)) {
+            return;
+        }
+        if (isOwner(post, currentUser)) {
+            return;
+        }
+        throw new AccessDeniedException("You may only modify your own posts.");
+    }
+
+    private boolean isAdmin(User user) {
+        return user.getRole() == Role.ADMIN;
+    }
+
+    private boolean isOwner(Post post, User currentUser) {
+        return post.getAuthor() != null
+                && post.getAuthor().getId().equals(currentUser.getId());
+    }
+
+    // ----- Field application -----
+
+    /** Sets the published flag, and stamps publishedAt only on the false -> true transition. */
+    private void applyPublishState(Post post, boolean nowPublished) {
+
+        boolean wasPublished = post.isPublished();
+        post.setPublished(nowPublished);
+
+        if (nowPublished && !wasPublished) {
+            post.setPublishedAt(LocalDateTime.now());
+        }
+    }
+
+    private void applyTags(Post post, String tagCsv) {
+
+        post.getTags().clear();
+        Set<Tag> tags = tagService.resolveTags(tagCsv);
+        for (Tag tag : tags) {
+            post.addTag(tag);
+        }
     }
 }
