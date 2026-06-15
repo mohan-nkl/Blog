@@ -72,7 +72,7 @@ public class HomeController {
                                 String order) {
 
         model.addAttribute("posts", posts);
-        model.addAttribute("authors", userService.findAll());
+        model.addAttribute("authors", postService.findAuthorsWithPosts());
         model.addAttribute("tags", tagService.findAll());
         model.addAttribute("authorId", authorId);
         model.addAttribute("tagId", tagId);

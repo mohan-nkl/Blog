@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -103,6 +104,11 @@ public class PostService {
         postRepository.deleteById(id);
     }
 
+    @Transactional(readOnly = true)
+    public List<User> findAuthorsWithPosts() {
+        return postRepository.findDistinctAuthors();
+    }
+
     // ----- Author resolution -----
 
     /** Authors always write as themselves; only an admin may choose the author. */
@@ -166,4 +172,5 @@ public class PostService {
             post.addTag(tag);
         }
     }
+
 }
