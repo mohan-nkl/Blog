@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Create account')}"></head>
+<body>
+<header th:replace="~{layout :: header}"></header>
+
+<h1 style="text-align:center;">Create account</h1>
+
+<form th:object="${registerForm}" method="post" th:action="@{/register}"
+      style="max-width: 360px; margin: 0 auto;">
+
+  <label>Name
+    <input type="text" th:field="*{name}">
+  </label>
+  <span class="error" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">name error</span>
+
+  <label>Email
+    <input type="email" th:field="*{email}">
+  </label>
+  <span class="error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}">email error</span>
+
+  <label>Password
+    <input type="password" th:field="*{password}">
+  </label>
+  <span class="error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}">password error</span>
+
+  <label>Confirm Password
+    <input type="password" th:field="*{confirmPassword}">
+  </label>
+  <span class="error" th:if="${#fields.hasErrors('confirmPassword')}" th:errors="*{confirmPassword}">confirm error</span>
+
+  <button type="submit">Submit</button>
+</form>
+
+<p style="text-align:center; margin-top:1rem;">
+  Have account? <a th:href="@{/login}">Login</a>
+</p>
+
+<footer th:replace="~{layout :: footer}"></footer>
+</body>
+</html>
