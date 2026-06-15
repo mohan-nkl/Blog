@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Edit Comment')}"></head>
+<body>
+<header th:replace="~{layout :: header}"></header>
+
+<h1>Edit Comment</h1>
+
+<form th:object="${commentForm}" method="post" th:action="@{/comments/{id}(id=${commentId})}">
+
+    <label>Name
+        <input type="text" th:field="*{name}">
+    </label>
+    <span class="error" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">name error</span>
+
+    <label>Email
+        <input type="email" th:field="*{email}">
+    </label>
+    <span class="error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}">email error</span>
+
+    <label>Comment
+        <textarea th:field="*{comment}" rows="3"></textarea>
+    </label>
+    <span class="error" th:if="${#fields.hasErrors('comment')}" th:errors="*{comment}">comment error</span>
+
+    <button type="submit">Update</button>
+    <a th:href="@{/posts/{id}(id=${postId})}">Cancel</a>
+</form>
+
+<footer th:replace="~{layout :: footer}"></footer>
+</body>
+</html>
