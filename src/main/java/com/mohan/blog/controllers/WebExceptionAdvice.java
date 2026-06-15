@@ -16,6 +16,6 @@ public class WebExceptionAdvice {
 
         model.addAttribute("message",
                 "You can only edit or delete posts that you created.");
-        return "error/forbidden";
+        return "forbidden";
     }
 }
