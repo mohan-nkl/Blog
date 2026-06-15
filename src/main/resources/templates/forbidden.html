@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Access denied</title>
+</head>
+<body>
+<main>
+  <h1>You don't have permission to do that</h1>
+  <p th:text="${message}">You can only edit or delete posts that you created.</p>
+  <a th:href="@{/}">← Back to all posts</a>
+</main>
+</body>
+</html>
